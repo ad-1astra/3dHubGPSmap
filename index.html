@@ -297,9 +297,23 @@
     .walk-hud{bottom:calc(14px + env(safe-area-inset-bottom,0px));max-width:94vw;padding:11px 16px;gap:11px;}
     .walk-hud .arrow{font-size:28px;width:34px;}
     .walk-hud .txt .main{font-size:14px;}
-    body.route-open .walk-hud{bottom:calc(min(78vh,560px) + 10px);}
+    body.route-open .walk-hud{bottom:calc(min(40vh,320px) + 10px);}
 
     .ex-map-wrap.expanded{width:min(94vw,140vh);}
+
+    /* While actively touring, the sheet only needs to show the current route
+       card (destination, speed, pause/stop, steps) — the browse controls
+       (view toggles, room search, checkpoint print) above and below it were
+       pushing the whole panel past 3/4 of the screen and leaving almost no
+       room to see the 3D walkthrough. Collapse to just the header + route
+       card so the model gets the screen back. */
+    /* !important: two of the rows this hides (Show levels / Auto-spin) carry
+       an inline style="display:grid" from the markup, which otherwise beats
+       any stylesheet rule regardless of selector specificity. */
+    body.route-open .explore > *{display:none !important;}
+    body.route-open .explore > .ex-head{display:flex !important;}
+    body.route-open .explore > #ex-route{display:flex !important;}
+    body.route-open .explore{max-height:40vh;}
   }
 
   /* Small phones (iPhone SE / mini, compact Android) */
@@ -336,7 +350,7 @@
   @media (max-width:720px) and (max-height:480px){
     .explore{max-height:92vh;padding-top:10px;}
     .ex-list{max-height:16vh;}
-    body.route-open .walk-hud{bottom:calc(min(92vh,420px) + 8px);}
+    body.route-open .walk-hud{bottom:calc(min(40vh,320px) + 8px);}
   }
 
   /* iPads / mid-size tablets: comfortable middle ground, keep the side-panel
@@ -1229,6 +1243,9 @@ var FLOORPLAN_IMG = {
     function setRouteOpen(v){
       var routeEl=$("ex-route"); if(routeEl) routeEl.style.display=v?"":"none";
       document.body.classList.toggle("route-open", !!v);
+      // the sheet collapses to just the route card on phones when a route
+      // starts — reset scroll so it doesn't open mid-scroll from browsing
+      if(v){ var p=$("explore"); if(p) p.scrollTop=0; }
     }
     function computeRoute(fromN,toN){
       var nodes=null;
