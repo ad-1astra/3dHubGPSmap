@@ -314,6 +314,12 @@
     body.route-open .explore > .ex-head{display:flex !important;}
     body.route-open .explore > #ex-route{display:flex !important;}
     body.route-open .explore{max-height:40vh;}
+
+    /* The much bigger 3D view now visible during a walkthrough (see above)
+       puts the QR card right over room labels and the route line instead of
+       empty background — it's also not useful mid-tour on the phone that's
+       already running the tour, so hide it while a route is active. */
+    body.route-open .qrcard{display:none;}
   }
 
   /* Small phones (iPhone SE / mini, compact Android) */
