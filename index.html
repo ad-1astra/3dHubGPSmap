@@ -1298,7 +1298,11 @@ var FLOORPLAN_IMG = {
         });
       });
     }
-    var ARROW_GLYPH={"straight":"↑","left":"←","right":"→","sharp-left":"↩","sharp-right":"↪","up":"↑","down":"↓"};
+    // "sharp" turns used ↩/↪ (U+21A9/21AA) — those read as undo/redo icons in
+    // most fonts, not a turn, and render inconsistently across platforms. ↙/↘
+    // sit in the same well-supported arrow block as ↑←→↓ and actually read as
+    // "your new heading is back-and-to-the-side", which is what a >120° turn is.
+    var ARROW_GLYPH={"straight":"↑","left":"←","right":"→","sharp-left":"↙","sharp-right":"↘","up":"↑","down":"↓"};
     function glyphFor(step){
       if(!step) return "↑";
       if(step.k==="arrive") return "●";
