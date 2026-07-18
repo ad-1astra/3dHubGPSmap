@@ -176,6 +176,7 @@
     overflow-y:auto;}
   .explore.show{display:flex;}
   .ex-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .ex-head .lbl{font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--ink);}
   .ex-close{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
     background:none;border:1px solid var(--hair);color:var(--muted);border-radius:8px;padding:6px 10px;}
   .ex-search{width:100%;background:rgba(243,236,226,.06);border:1px solid var(--hair);border-radius:10px;
@@ -204,13 +205,18 @@
   .ex-room.active{background:rgba(77,141,255,.16);border-color:rgba(77,141,255,.5);}
   .ex-room small{font-family:var(--mono);color:var(--accent);font-size:10px;text-transform:uppercase;}
   .ex-route{border-top:1px solid var(--hair);padding-top:12px;display:flex;flex-direction:column;gap:9px;}
-  .ex-route-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .ex-route-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
   .ex-route-hd span{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:-.01em;}
+  .ex-route-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .ex-speed{display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--hair);border-radius:999px;background:rgba(243,236,226,.04);}
+  .ex-speed button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    background:none;border:none;color:var(--muted);border-radius:999px;padding:4px 7px;min-width:28px;}
+  .ex-speed .value{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);padding:0 4px;}
   .ex-route-btns{display:flex;gap:6px;flex:none;}
   .ex-route-hd button.on{background:var(--accent);color:#1a0f06;border-color:var(--accent);}
   .ex-route-hd button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
     background:none;border:1px solid var(--hair);color:var(--muted);border-radius:8px;padding:5px 9px;white-space:nowrap;}
-  .ex-map-wrap{position:relative;width:100%;}
+  .map-fab{display:none;}
   #ex-map{width:100%;aspect-ratio:16/10;border-radius:10px;background:#0F0C09;border:1px solid var(--hair);display:block;}
   .ex-map-expand{position:absolute;top:8px;right:8px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
     text-transform:uppercase;background:rgba(22,18,14,.72);border:1px solid var(--hair);color:var(--ink);
@@ -366,7 +372,7 @@
       <div class="lbl">Labels</div>
       <button class="wide on" id="btn-labels">Room names</button>
       <div class="lbl">Wayfinding</div>
-      <button class="primary wide" id="btn-explore">Find a room &amp; tour</button>
+      <button class="primary wide" id="btn-explore">👁 Map</button>
       <div class="lbl">Checkpoints</div>
       <button class="wide" id="btn-qrsheet">Print checkpoint QRs</button>
     </div>
@@ -391,7 +397,7 @@
 
   <div class="explore" id="explore">
     <div class="ex-head">
-      <div class="lbl">Find a room</div>
+      <div class="lbl">Easy directions</div>
       <button class="ex-close" id="ex-close">Close</button>
     </div>
     <div class="ex-picker">
@@ -404,15 +410,17 @@
     <div class="ex-list" id="ex-list"></div>
     <div class="ex-route" id="ex-route" style="display:none">
       <div class="ex-route-hd"><span id="ex-route-title">-</span>
-        <div class="ex-route-btns">
-          <button id="ex-route-repeat" title="Repeat this instruction">Repeat</button>
-          <button id="ex-route-pause">Pause</button>
-          <button id="ex-route-stop">Stop</button>
+        <div class="ex-route-tools">
+          <div class="ex-speed">
+            <button id="ex-speed-down" title="Slower">−</button>
+            <span class="value" id="ex-speed-label">1.0×</span>
+            <button id="ex-speed-up" title="Faster">+</button>
+          </div>
+          <div class="ex-route-btns">
+            <button id="ex-route-pause">Pause</button>
+            <button id="ex-route-stop">Stop</button>
+          </div>
         </div>
-      </div>
-      <div class="ex-map-wrap" id="ex-map-wrap">
-        <canvas id="ex-map" width="480" height="300"></canvas>
-        <button class="ex-map-expand" id="ex-map-expand">Enlarge map</button>
       </div>
       <ol class="ex-steps" id="ex-steps"></ol>
     </div>
@@ -1110,8 +1118,16 @@ var FLOORPLAN_IMG = {
     var N={}; nav.nodes.forEach(function(x){N[x.id]=x;});
     var EYE_Y=[1.55, (HUB.meta.splitY||2.44)+1.35];
     var WALK_RAD=Math.max(5.5, Math.min(8.5, span*0.22)), WALK_POL=0.92; // a bit higher/more overview than a first-person eye-level shot
-    var WALK_SPEED=0.55;      // m/s — slow, easy-to-follow walking pace
+    var WALK_SPEED_BASE=0.55; // m/s — calm, easy-to-follow walking pace
+    var WALK_SPEED_LEVEL=1.0;
     var WALK_PAUSE_MS=1900;   // how long each turn-by-turn instruction holds before moving on
+    function currentWalkSpeed(){ return WALK_SPEED_BASE * WALK_SPEED_LEVEL; }
+    function refreshSpeedUI(){
+      var lbl=$("ex-speed-label"); if(lbl) lbl.textContent=(WALK_SPEED_LEVEL.toFixed(1))+"×";
+      var down=$("ex-speed-down"); if(down) down.disabled = WALK_SPEED_LEVEL <= 0.6;
+      var up=$("ex-speed-up"); if(up) up.disabled = WALK_SPEED_LEVEL >= 2.4;
+    }
+    function changeWalkSpeed(delta){ WALK_SPEED_LEVEL=Math.max(0.6, Math.min(2.4, WALK_SPEED_LEVEL+delta)); refreshSpeedUI(); }
 
     // -- real floor-plan photos: preload + auto-trim the white margin so the drawn
     // room outlines don't sit lost in a sea of blank paper on a small canvas --
@@ -1523,7 +1539,7 @@ var FLOORPLAN_IMG = {
       if(walk.idx>=walk.pts.length-1){ onWalkArrive(); return; }
       var nxt=walk.pts[walk.idx+1];
       var dx=nxt.x-walk.pos.x, dz=nxt.z-walk.pos.z, dy=nxt.y-walk.pos.y;
-      var dist=Math.hypot(dx,dz), stepLen=WALK_SPEED*(dt/1000);
+      var dist=Math.hypot(dx,dz), stepLen=currentWalkSpeed()*(dt/1000);
       if(dist<=stepLen || dist<0.02){
         walk.pos.x=nxt.x; walk.pos.y=nxt.y; walk.pos.z=nxt.z;
         walk.idx++;
@@ -1596,12 +1612,14 @@ var FLOORPLAN_IMG = {
     if(mapBackdrop) mapBackdrop.addEventListener("click", function(){ setMapExpanded(false); });
 
     // -- wire up --
+    function setPanelVisible(show){
+      panel.classList.toggle("show", show);
+      if(openBtn) toggle(openBtn, show);
+    }
     var openBtn=$("btn-explore");
-    if(openBtn) openBtn.addEventListener("click", function(){
-      panel.classList.toggle("show"); toggle(this, panel.classList.contains("show"));
-    });
+    if(openBtn) openBtn.addEventListener("click", function(){ setPanelVisible(!panel.classList.contains("show")); });
     var closeBtn=$("ex-close");
-    if(closeBtn) closeBtn.addEventListener("click", function(){ panel.classList.remove("show"); if(openBtn) toggle(openBtn,false); });
+    if(closeBtn) closeBtn.addEventListener("click", function(){ setPanelVisible(false); });
     var searchEl=$("ex-search");
     if(searchEl) searchEl.addEventListener("input", function(){ renderList(searchEl.value); });
     var pickFromBtn=$("ex-pick-from");
@@ -1627,6 +1645,11 @@ var FLOORPLAN_IMG = {
       showStepAt(walk.idx);
       if(!walk.paused) walk.pausedUntil=performance.now()+WALK_PAUSE_MS;
     });
+    var speedDownBtn=$("ex-speed-down");
+    if(speedDownBtn) speedDownBtn.addEventListener("click", function(){ changeWalkSpeed(-0.2); });
+    var speedUpBtn=$("ex-speed-up");
+    if(speedUpBtn) speedUpBtn.addEventListener("click", function(){ changeWalkSpeed(0.2); });
+    refreshSpeedUI();
 
     updateFromLabel();
     updateToLabel();
