@@ -1142,7 +1142,7 @@ var FLOORPLAN_IMG = {
     var panel=$("explore"); if(!panel) return;
     var nav=window.navSeeded();
     var N={}; nav.nodes.forEach(function(x){N[x.id]=x;});
-    var EYE_Y=[1.55, (HUB.meta.splitY||2.44)+1.35];
+    var EYE_Y=[1.55, ((HUB.meta.splitY||2.44)+1.35)*4];
     var WALK_RAD=Math.max(5.5, Math.min(8.5, span*0.22)), WALK_POL=0.92; // a bit higher/more overview than a first-person eye-level shot
     var WALK_SPEED_BASE=0.55; // m/s — calm, easy-to-follow walking pace
     var WALK_SPEED_LEVEL=1.0;
